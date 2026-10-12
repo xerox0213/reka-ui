@@ -761,8 +761,8 @@ describe('given combobox in a form', async () => {
     })
 
     it('should trigger submit once', () => {
-      expect(handleSubmit).toHaveBeenCalledTimes(2)
-      expect(handleSubmit.mock.results[1].value).toStrictEqual({ test: 'Pineapple' })
+      expect(handleSubmit).toHaveBeenCalledTimes(1)
+      expect(handleSubmit.mock.results[0].value).toStrictEqual({ test: 'Pineapple' })
     })
   })
 
@@ -1557,5 +1557,55 @@ describe('combobox highlight scrolling with popper positioning', () => {
 
     expect(getHighlightedElement(input).textContent).toContain('Alpha')
     expect(scrollSpy).toHaveBeenCalledWith({ block: 'nearest' })
+  })
+})
+
+describe('given a Combobox with `loop`', () => {
+  window.HTMLElement.prototype.scrollIntoView = vi.fn()
+
+  const LoopCombobox = defineComponent({
+    components: { ComboboxAnchor, ComboboxContent, ComboboxInput, ComboboxItem, ComboboxRoot, ComboboxViewport },
+    props: { loop: Boolean },
+    template: `<ComboboxRoot :loop="loop" default-open>
+  <ComboboxAnchor>
+    <ComboboxInput />
+  </ComboboxAnchor>
+  <ComboboxContent>
+    <ComboboxViewport>
+      <ComboboxItem v-for="value in ['Apple', 'Banana', 'Cherry']" :key="value" :value="value">{{ value }}</ComboboxItem>
+    </ComboboxViewport>
+  </ComboboxContent>
+</ComboboxRoot>`,
+  })
+
+  function highlighted() {
+    return document.querySelector('[role=option][data-highlighted]')?.textContent
+  }
+
+  beforeEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  it('should wrap the highlight around the boundary items', async () => {
+    const wrapper = mount(LoopCombobox, { props: { loop: true }, attachTo: document.body })
+    await flushPromises()
+    const input = wrapper.find('input')
+
+    await input.trigger('keydown', { key: 'End' })
+    expect(highlighted()).toBe('Cherry')
+    await input.trigger('keydown', { key: 'ArrowDown' })
+    expect(highlighted()).toBe('Apple')
+    await input.trigger('keydown', { key: 'ArrowUp' })
+    expect(highlighted()).toBe('Cherry')
+  })
+
+  it('should stay on the boundary items without `loop`', async () => {
+    const wrapper = mount(LoopCombobox, { attachTo: document.body })
+    await flushPromises()
+    const input = wrapper.find('input')
+
+    await input.trigger('keydown', { key: 'End' })
+    await input.trigger('keydown', { key: 'ArrowDown' })
+    expect(highlighted()).toBe('Cherry')
   })
 })
